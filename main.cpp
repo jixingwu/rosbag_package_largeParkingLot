@@ -7,6 +7,7 @@
 #include <Eigen/Geometry>
 
 #include <ros/ros.h>
+#include <ros/package.h>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -16,28 +17,28 @@
 #include <sensor_msgs/Image.h>
 #include <nav_msgs/Odometry.h>
 
-#define M_ROWS  2790
-#define N_COLS  7
+#define M_ROWS  2860 // 更换数据集时需修改为图片数量
+#define N_COLS  7 // position.txt中的cols
 
 using namespace std;
 using namespace cv;
 using namespace Eigen;
 
+
 int main(int argc, char** argv){
     ros::init(argc, argv, "largeParkingLot");
-    ros::NodeHandle n("~");
+    ros::NodeHandle nh("~");
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
 
-    cout<<"init code!!"<<endl;
-    string filepath = "/media/jixingwu/datasetj/LargeParkingLot/20201214T101548/";
+    ros::Publisher pub_odometry = nh.advertise<nav_msgs::Odometry>("odometry", 1);
+    ros::Publisher pub_image = nh.advertise<sensor_msgs::Image>("image", 1);
+    ros::Publisher pub_depth = nh.advertise<sensor_msgs::Image>("depth", 1);
 
+    string base_folder = "/media/jixingwu/datasetj/LargeParkingLot_rich/20210108T122234/";
 
-    ros::Publisher pub_odometry = n.advertise<nav_msgs::Odometry>("odometry", 1);
-    ros::Publisher pub_image = n.advertise<sensor_msgs::Image>("image", 1);
-    ros::Publisher pub_depth = n.advertise<sensor_msgs::Image>("depth", 1);
     // -------------- read position.txt into Eigen Matrix
     ifstream infile;
-    infile.open(filepath + "position.txt");
+    infile.open(base_folder + "position.txt");
     assert(infile.is_open());
     Eigen::MatrixXd pos_matrix(M_ROWS, N_COLS);
     vector<double> row_vector;
@@ -84,13 +85,13 @@ int main(int argc, char** argv){
         stringstream ss;
         ss << setfill('0') << setw(6) << row;
         string imagePath = "image/" + ss.str() + ".png";
-        cv::Mat im_rgb = cv::imread(filepath + imagePath, CV_LOAD_IMAGE_UNCHANGED);
+        cv::Mat im_rgb = cv::imread(base_folder + imagePath, CV_LOAD_IMAGE_UNCHANGED);
         assert(!im_rgb.empty() && "rgb图片加载失败");
         sensor_msgs::ImagePtr imgRGBMsg = cv_bridge::CvImage(header, "bgr8", im_rgb).toImageMsg();
         pub_image.publish(imgRGBMsg);
 
         string depthPath = "depth/" + ss.str() + ".png";
-        cv::Mat im_depth = cv::imread(filepath + depthPath, CV_LOAD_IMAGE_ANYDEPTH);
+        cv::Mat im_depth = cv::imread(base_folder + depthPath, CV_LOAD_IMAGE_ANYDEPTH);
         assert(!im_depth.empty() && "depth图片加载失败");
         sensor_msgs::ImagePtr imgDepthMsg = cv_bridge::CvImage(header, "mono8", im_depth).toImageMsg();
         pub_depth.publish(imgDepthMsg);
